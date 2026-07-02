@@ -1,7 +1,7 @@
 # app.py — AdHub v3 (PostgreSQL / Supabase 호환)
 import streamlit as st
 import pandas as pd
-import json, re, base64, io
+import json, re, base64, io, csv
 from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
@@ -373,7 +373,7 @@ def read_uploaded_file(file):
         df.columns = [str(c).strip() for c in df.columns]
         return df
 
-    # ---- CSV: 인코딩 자동 감지 ----
+    # ---- CSV/TSV: 인코딩 자동 감지 ----
     raw_bytes = file.read()
     file.seek(0)
 
@@ -388,18 +388,30 @@ def read_uploaded_file(file):
     if text_preview is None:
         text_preview = raw_bytes.decode("utf-8", errors="ignore")
 
-    # ---- 헤더 줄 자동 탐색 (제목/빈 줄 스킵) ----
     lines = text_preview.splitlines()
+    if not lines:
+        return pd.DataFrame()
+
+    # ---- 구분자 자동 감지 (콤마 / 탭 / 세미콜론) ----
+    sample = "\n".join(lines[:10])
+    try:
+        dialect = csv.Sniffer().sniff(sample, delimiters=",\t;")
+        sep = dialect.delimiter
+    except Exception:
+        sep = "\t" if sample.count("\t") > sample.count(",") else ","
+
+    # ---- 헤더 줄 자동 탐색 (제목/빈 줄 스킵) - 감지된 구분자 기준 ----
     header_row = 0
     max_fields = 0
     for i, line in enumerate(lines[:10]):
-        n_fields = len(line.split(","))
+        n_fields = len(line.split(sep))
         if n_fields > max_fields:
             max_fields = n_fields
             header_row = i
 
     df = pd.read_csv(
         io.StringIO(text_preview),
+        sep=sep,
         skiprows=header_row,
         engine="python",
         on_bad_lines="skip",
