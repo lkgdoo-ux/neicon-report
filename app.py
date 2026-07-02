@@ -1,7 +1,7 @@
 # app.py — AdHub v3 (PostgreSQL / Supabase 호환)
 import streamlit as st
 import pandas as pd
-import json, re, base64
+import json, re, base64, io
 from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
@@ -370,8 +370,41 @@ def read_uploaded_file(file):
     name = file.name.lower()
     if name.endswith(("xlsx", "xls")):
         df = pd.read_excel(file)
-    else:
-        df = pd.read_csv(file)   # ← 여기서 옵션 없이 그대로 읽음
+        df.columns = [str(c).strip() for c in df.columns]
+        return df
+
+    # ---- CSV: 인코딩 자동 감지 ----
+    raw_bytes = file.read()
+    file.seek(0)
+
+    text_preview = None
+    for enc in ["utf-8-sig", "utf-16", "cp949", "euc-kr", "utf-8"]:
+        try:
+            text_preview = raw_bytes.decode(enc)
+            break
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+
+    if text_preview is None:
+        text_preview = raw_bytes.decode("utf-8", errors="ignore")
+
+    # ---- 헤더 줄 자동 탐색 (제목/빈 줄 스킵) ----
+    lines = text_preview.splitlines()
+    header_row = 0
+    max_fields = 0
+    for i, line in enumerate(lines[:10]):
+        n_fields = len(line.split(","))
+        if n_fields > max_fields:
+            max_fields = n_fields
+            header_row = i
+
+    df = pd.read_csv(
+        io.StringIO(text_preview),
+        skiprows=header_row,
+        engine="python",
+        on_bad_lines="skip",
+    )
+
     df.columns = [str(c).strip() for c in df.columns]
     return df
 # ============ 전환 매핑 ============
