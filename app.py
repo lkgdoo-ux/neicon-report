@@ -371,7 +371,26 @@ def read_uploaded_file(file):
     if name.endswith(("xlsx", "xls")):
         df = pd.read_excel(file)
     else:
-        df = pd.read_csv(file)
+        # 실제 헤더가 몇 번째 줄인지 자동 탐색
+        raw_bytes = file.read()
+        file.seek(0)
+        try:
+            text_preview = raw_bytes.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            text_preview = raw_bytes.decode("cp949", errors="ignore")
+
+        lines = text_preview.splitlines()
+        header_row = 0
+        max_fields = 0
+        # 앞부분 최대 10줄 중에서 필드 수가 가장 많은 줄을 헤더로 추정
+        for i, line in enumerate(lines[:10]):
+            n_fields = len(line.split(","))
+            if n_fields > max_fields:
+                max_fields = n_fields
+                header_row = i
+
+        df = pd.read_csv(file, skiprows=header_row, engine="python", on_bad_lines="skip")
+
     df.columns = [str(c).strip() for c in df.columns]
     return df
 
