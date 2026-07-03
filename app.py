@@ -48,6 +48,17 @@ def q(sql, params=(), fetch=True):
 def safe_div(a, b):
     return (a / b) if b else 0
 
+def safe_div(a, b):
+    return (a / b) if b else 0
+
+# ↓↓↓ 여기 새로 추가 ↓↓↓
+def clean_numeric(series):
+    """'5,812' 같이 쉼표 낀 숫자도 진짜 숫자로 바꿔주는 함수"""
+    return pd.to_numeric(
+        series.astype(str).str.replace(",", "", regex=False).str.strip(),
+        errors="coerce"
+    )
+
 # ============ 전환값(ROAS) 여부 판별 헬퍼 ============
 def _is_roas_step(label: str) -> bool:
     """라벨 또는 컬럼명에 '전환값' 또는 '매출'이 포함되면 ROAS 지표로 취급한다."""
@@ -2068,11 +2079,8 @@ elif page == "📤 데이터 업로드" and adv_code:
                 for c in df_raw.columns:
                     if c in mapped:
                         continue
-                    try:
-                        pd.to_numeric(df_raw[c], errors="raise")
+                    if clean_numeric(df_raw[c]).notna().all():
                         other_numeric.append(c)
-                    except:
-                        continue
 
                 if other_numeric:
                     st.caption(f"📌 raw_data에 저장될 전환 후보 컬럼: **{', '.join(other_numeric)}**")
@@ -2105,9 +2113,9 @@ elif page == "📤 데이터 업로드" and adv_code:
                         df["date"]        = pd.to_datetime(df_raw[col_date], errors="coerce").dt.strftime("%Y-%m-%d")
                         df["campaign"]    = df_raw[col_camp].astype(str)
                         df["adgroup"]     = df_raw[col_ag].astype(str) if col_ag != "(선택안함)" else df["campaign"]
-                        df["impressions"] = pd.to_numeric(df_raw[col_imp],  errors="coerce").fillna(0).astype(int)
-                        df["clicks"]      = pd.to_numeric(df_raw[col_clk],  errors="coerce").fillna(0).astype(int)
-                        df["cost"]        = pd.to_numeric(df_raw[col_cost], errors="coerce").fillna(0)
+                        df["impressions"] = clean_numeric(df_raw[col_imp]).fillna(0).astype(int)
+                        df["clicks"]      = clean_numeric(df_raw[col_clk]).fillna(0).astype(int)
+                        df["cost"]        = clean_numeric(df_raw[col_cost]).fillna(0)
                         if cost_unit.startswith("USD"):
                             df["cost"] = df["cost"] * 1300
                         df["creative"] = df_raw[col_cre].astype(str) if col_cre != "(선택안함)" else None
@@ -2117,7 +2125,8 @@ elif page == "📤 데이터 업로드" and adv_code:
                             for c in other_numeric:
                                 v = df_raw.loc[idx, c]
                                 try:
-                                    d[c] = float(v) if pd.notna(v) else 0
+                                    v_clean = str(v).replace(",", "").strip()
+                                    d[c] = float(v_clean) if v_clean not in ("", "nan", "None") else 0
                                 except:
                                     d[c] = 0
                             return json.dumps(d, ensure_ascii=False)
