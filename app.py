@@ -1823,6 +1823,13 @@ if page == "📈 대시보드" and adv_code:
 
     available = sorted(df_all["platform"].unique(),
                        key=lambda x: {"GOOGLE": 0, "FACEBOOK": 1}.get(x, 99))
+    def _has_creative_data(df, pf):
+        """해당 매체(pf)에 실제로 인식된 소재명이 하나라도 있는지 확인"""
+        sub = df[df["platform"] == pf]
+        if sub.empty or "creative" not in sub.columns:
+            return False
+        valid = sub["creative"].notna() & (sub["creative"] != "") & (sub["creative"] != "None")
+        return valid.any()
 
     cre_row      = q("SELECT COALESCE(show_creative,0) FROM advertisers WHERE code=?", (adv_code,))
     show_creative = bool(cre_row[0][0]) if cre_row else False
@@ -1831,11 +1838,11 @@ if page == "📈 대시보드" and adv_code:
     tab_keys   = ["summary"]
     if "GOOGLE" in available:
         tab_labels.append("🟦 Google");       tab_keys.append("google")
-        if show_creative:
+        if show_creative and _has_creative_data(df_all, "GOOGLE"):
             tab_labels.append("🎨 구글_광고소재"); tab_keys.append("google_cre")
     if "FACEBOOK" in available:
         tab_labels.append("🟪 Facebook");     tab_keys.append("facebook")
-        if show_creative:
+        if show_creative and _has_creative_data(df_all, "FACEBOOK"):
             tab_labels.append("🎨 페이스북_광고소재"); tab_keys.append("facebook_cre")
 
     tabs = st.tabs(tab_labels)
