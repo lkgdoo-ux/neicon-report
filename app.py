@@ -2080,22 +2080,20 @@ elif page == "📤 데이터 업로드" and adv_code:
                         horizontal=True, key="map_currency",
                         index=1 if (col_cost and "USD" in col_cost.upper()) else 0)
 
-               mapped = {col_date, col_camp, col_ag, col_imp, col_clk, col_cost, col_cre}
-               mapped.discard("(선택안함)")
-               other_numeric = []
-               for c in df_raw.columns:
+                mapped = {col_date, col_camp, col_ag, col_imp, col_clk, col_cost, col_cre}
+                mapped.discard("(선택안함)")
+                other_numeric = []
+                for c in df_raw.columns:
                     if c in mapped:
                         continue
                     non_null = df_raw[c].notna()
                     if non_null.any():
                         cleaned = clean_numeric(df_raw[c])
-                        # 값이 있는 행들만 봤을 때 전부 숫자로 변환되면 후보로 인정 (빈 값은 허용)
                         if cleaned[non_null].notna().all():
                             other_numeric.append(c)
 
                 if other_numeric:
                     st.caption(f"📌 raw_data에 저장될 전환 후보 컬럼: **{', '.join(other_numeric)}**")
-
                 st.divider()
                 st.subheader("📦 업로드 방식 선택")
                 mode = st.radio("업로드 모드",
