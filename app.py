@@ -2253,7 +2253,7 @@ elif page == "📤 데이터 업로드" and adv_code:
                                     cre_val = (
                                         row["creative"]
                                         if "creative" in df.columns and pd.notna(row["creative"])
-                                        else None
+                                        else ""
                                     )
                                     rows_to_insert.append({
                                         "adv":  adv_code,
@@ -2276,8 +2276,14 @@ elif page == "📤 데이터 업로드" and adv_code:
                                     VALUES
                                         (:adv, :pf, :date, :camp, :ag,
                                          :imp, :clk, :cost, :raw, :uid, :cre)
+                                    ON CONFLICT (advertiser_code, platform, date, campaign, adgroup, creative)
+                                    DO UPDATE SET
+                                        impressions   = EXCLUDED.impressions,
+                                        clicks        = EXCLUDED.clicks,
+                                        cost          = EXCLUDED.cost,
+                                        raw_data      = EXCLUDED.raw_data,
+                                        upload_log_id = EXCLUDED.upload_log_id
                                 """), rows_to_insert)
-
                                 con.commit()
 
                             saved_conv_col   = st.session_state.get("upload_conv_col", "(선택안함)")
