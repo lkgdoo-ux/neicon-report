@@ -13,9 +13,13 @@ st.set_page_config(page_title="Neicon Report", page_icon="파비콘_0314.png", l
 @st.cache_resource
 def get_engine():
     url = st.secrets["DATABASE_URL"]
-    return create_engine(url, pool_pre_ping=True, pool_size=5, max_overflow=10)
-
-engine = get_engine()
+    return create_engine(
+        url,
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=10,
+        connect_args={"prepare_threshold": None},  # ← 추가: prepared statement 끄기
+    )
 
 # ============ 공통 쿼리 헬퍼 ============
 def q(sql, params=(), fetch=True):
